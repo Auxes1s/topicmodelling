@@ -1,0 +1,253 @@
+---
+title: "Analyzing Taylor Swift's Midnights Album"
+author:
+  - name: "Marc Shervin Ignacio"
+    affiliation: "2019-04690"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: lumen
+    toc: yes
+    toc_float: yes
+    toc_depth: 4
+    number_sections: no
+    highlight: pygments
+    fig_caption: yes
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+### What is Topic Modeling?
+
+<p>Topic modeling is a machine learning technique that automatically
+analyzes text data to determine cluster words for a set of documents.
+This is known as 'unsupervised' machine learning because it doesn't
+require a predefined list of tags or training data that's been
+previously classified by humans.</p>
+
+<div>
+
+For this project, we are going to use Latent Dirichlet Allocation (LDA).
+Simply:
+
+Taken from:
+
+[A Beginner's Guide to Latent Dirichlet Allocation(LDA) \| by Ria
+Kulshrestha \| Towards Data
+Science](https://towardsdatascience.com/latent-dirichlet-allocation-lda-9d1cd064ffa2)
+
+# **LDA**
+
+It is one of the most popular topic modeling methods. Each document is
+made up of various words, and each topic also has various words
+belonging to it. The aim of LDA is to find topics a document belongs to,
+based on the words in it.
+
+</div>
+
+Onto the project:\
+
+```{r setup}
+require('topicmodels')
+require(knitr)
+require(kableExtra)
+require(geniusr)
+library(topicmodels)
+library(tidyr)
+library(tidytext)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+Midnights_album <- get_album_tracklist_search(artist_name = "Taylor Swift", album_name = "Midnights")
+```
+
+```{r}
+lyrics <- rbind(get_lyrics_url(Midnights_album$song_lyrics_url[1])[c(1,4)],
+           get_lyrics_url(Midnights_album$song_lyrics_url[2])[c(1,4)],
+               get_lyrics_url(Midnights_album$song_lyrics_url[3])[c(1,4)],
+               get_lyrics_url(Midnights_album$song_lyrics_url[4])[c(1,4)],
+               get_lyrics_url(Midnights_album$song_lyrics_url[5])[c(1,4)],
+               get_lyrics_url(Midnights_album$song_lyrics_url[6])[c(1,4)],
+               get_lyrics_url(Midnights_album$song_lyrics_url[7])[c(1,4)],
+               get_lyrics_url(Midnights_album$song_lyrics_url[8])[c(1,4)],
+               get_lyrics_url(Midnights_album$song_lyrics_url[9])[c(1,4)],
+               get_lyrics_url(Midnights_album$song_lyrics_url[11])[c(1,4)],
+               get_lyrics_url(Midnights_album$song_lyrics_url[12])[c(1,4)],
+            	get_lyrics_url(Midnights_album$song_lyrics_url[13])[c(1,4)])
+
+```
+
+```{r}
+colnames(lyrics) <- c("text","id")
+```
+
+```{r}
+head(lyrics, 20) %>%
+  kbl(caption = "Midnights album") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+
+```{r}
+# function to expand contractions in an English-language source
+fix.contractions <- function(doc) {
+  # "won't" is a special case as it does not expand to "wo not"
+  doc <- gsub("won't", "will not", doc)
+  doc <- gsub("can't", "can not", doc)
+  doc <- gsub("n't", " not", doc)
+  doc <- gsub("'ll", " will", doc)
+  doc <- gsub("'re", " are", doc)
+  doc <- gsub("'ve", " have", doc)
+  doc <- gsub("'m", " am", doc)
+  doc <- gsub("'d", " would", doc)
+  # 's could be 'is' or could be possessive: it has no expansion
+  doc <- gsub("'s", " is", doc)
+  return(doc)
+}
+dup_lyrics <- lyrics
+dup_lyrics$text <- sapply(dup_lyrics$text,fix.contractions)
+
+filtered_lyrics <- dup_lyrics %>% 
+  unnest_tokens(input=text, output=word) %>% #Prepare the data
+  anti_join(stop_words)#Remove the stop words
+
+my_colors <- c("#E69F00", "#56B4E9", "#009E73", "#CC79A7", "#D55E00")
+filtered_lyrics %>%
+  count(word, sort = TRUE) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot() +
+    geom_col(aes(word, n), fill = my_colors[4]) +
+    theme(legend.position = "none", 
+          plot.title = element_text(hjust = 0.5),
+          panel.grid.major = element_blank()) +
+    xlab("") + 
+    ylab("Song Count") +
+    ggtitle("Most Frequently Used Words in Taylor Swift Lyrics") +
+    coord_flip()
+
+
+```
+
+### Analysis
+
+```{r}
+dtm <- dup_lyrics %>% 
+  unnest_tokens(input=text, output=word) %>% #Prepare the data
+  anti_join(stop_words) %>% #Remove the stop words
+  count(id, word) %>%  #Count the instances of our words
+  cast_dtm(document=id, term=word, value=n) #Cast into a doc-term matrix
+
+
+```
+
+Here we create our models:
+
+```{r}
+mod2 <- LDA(x=dtm, k=2, method="Gibbs", 
+            control=list(alpha=1))
+mod3 <- LDA(x=dtm, k=3, method="Gibbs", 
+            control=list(alpha=1))
+mod4 <- LDA(x=dtm, k=4, method="Gibbs", 
+            control=list(alpha=1))
+mod5 <- LDA(x=dtm, k=5, method="Gibbs", 
+            control=list(alpha=1))
+mod6 <- LDA(x=dtm, k=6, method="Gibbs", 
+            control=list(alpha=1))
+mod7 <- LDA(x=dtm, k=7, method="Gibbs", 
+            control=list(alpha=1))
+mod8 <- LDA(x=dtm, k=8, method="Gibbs", 
+            control=list(alpha=1))
+mod9 <- LDA(x=dtm, k=9, method="Gibbs", 
+            control=list(alpha=1))
+mod10 <- LDA(x=dtm, k=10, method="Gibbs", 
+           control=list(alpha=1))
+mod11 <- LDA(x=dtm, k=11, method="Gibbs", 
+           control=list(alpha=1))
+mod12 <- LDA(x=dtm, k=12, method="Gibbs", 
+           control=list(alpha=1))
+mod13 <- LDA(x=dtm, k=13, method="Gibbs", 
+           control=list(alpha=1))
+mod14 <- LDA(x=dtm, k=14, method="Gibbs", 
+           control=list(alpha=1))
+mod15 <- LDA(x=dtm, k=15, method="Gibbs", 
+           control=list(alpha=1))
+mod16 <- LDA(x=dtm, k=16, method="Gibbs", 
+           control=list(alpha=1))
+mod17 <- LDA(x=dtm, k=17, method="Gibbs", 
+           control=list(alpha=1))
+
+models <- c(mod2, mod3, mod4, mod5, mod6, mod7, mod8, mod9, mod10, mod11, mod12, mod13, mod14, mod15, mod16, mod17)
+```
+
+```{r}
+#Here we create a list of our models and their log_likelihood and perplexity scores
+container <- list()
+for(i in models){
+  container <- append(container,
+                      list(list(k=i@k, model=i, log_likelihood=topicmodels::logLik(i), 
+                           perplexity = perplexity(object=i, newdata=dtm)))
+                      )
+}
+```
+
+```{r}
+#Plotting our perplexity score
+x <- sapply(container, '[[', 'k')
+y <- sapply(container, '[[', 'perplexity')
+plot(x, y, xlab="number of clusters, k", ylab="perplexity score", type="o")
+namebank = as.character(2:17)
+text(x, y, labels=namebank, cex= 0.7, pos=3)
+```
+
+Our desired \# of topics is 11:
+
+```{r}
+kable(terms(mod11, k=10))
+```
+
+```{r}
+new_perplexity_score <- numeric(length(container))
+
+# Run each model for 100 iterations
+for (i in seq_along(container)) {
+  mod2 <- LDA(x=dtm, model=container[[i]]$model,
+              control=list(iter=5000, thin=1))
+  new_perplexity_score[i] <- perplexity(object=mod2, newdata=dtm)
+}
+
+k <- 2:17
+plot(x=k, y=new_perplexity_score, xlab="number of clusters, k", 
+     ylab="perplexity score", type="o")
+namebank = as.character(2:17)
+text(x, y, labels=namebank, cex= 0.7, pos=3)
+```
+
+ 
+
+```{r}
+#Wordclouds for Model with 5 topics
+library(wordcloud)
+# Display wordclouds one at a time
+for (j in 1:11) {
+  # Generate a table with word frequences for topic j
+  word_frequencies <- tidy(mod11, matrix="beta") %>% 
+    mutate(n = trunc(beta * 10000)) %>% 
+    filter(topic == j)
+
+  # Display word cloud
+  layout(matrix(c(1, 2), nrow=2), heights=c(1, 4))
+  par(mar=rep(0, 4))
+  plot.new()
+  text(x=0.5, y=0.5, paste("Topic ",j))
+  wordcloud(words = word_frequencies$term, 
+            freq = word_frequencies$n,
+            max.words = 20,
+            scale = c(3, 0.5),
+            colors = c("DarkOrange", "CornflowerBlue", "DarkRed"), 
+            rot.per = 0.3)
+}
+```
